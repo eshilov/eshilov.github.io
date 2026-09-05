@@ -435,10 +435,13 @@
         return loadScenarios().find((s) => s.id === id) || null;
       }
 
+      const DEFAULT_TITLE = "Pomodoro";
+
       function showView(view) {
         scenariosView.hidden = view !== "scenarios";
         editorView.hidden = view !== "editor";
         runView.hidden = view !== "run";
+        if (view !== "run") document.title = DEFAULT_TITLE;
       }
 
       function setError(el, message) {
@@ -607,13 +610,17 @@
           runTimerName.textContent = "—";
           runTime.textContent = "00:00";
           runQueue.replaceChildren();
+          document.title = DEFAULT_TITLE;
           return;
         }
 
         const timer = scenario.timers[activeIndex];
+        const timerName = timer ? timer.name : "—";
+        const timeLeft = formatDuration(remainingMs);
         runScenarioName.textContent = scenario.name;
-        runTimerName.textContent = timer ? timer.name : "—";
-        runTime.textContent = formatDuration(remainingMs);
+        runTimerName.textContent = timerName;
+        runTime.textContent = timeLeft;
+        document.title = `${timeLeft} · ${timerName}`;
 
         runQueue.replaceChildren();
         scenario.timers.forEach((item, index) => {
@@ -900,6 +907,7 @@
         setRunStatus("stopped");
         const id = activeScenarioId;
         activeScenarioId = null;
+        document.title = DEFAULT_TITLE;
         if (id) openEditor(id);
         else {
           showView("scenarios");
