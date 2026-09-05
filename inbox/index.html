@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Inbox</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background: #121212;
+        color: #e8e8e8;
+      }
+
+      body {
+        display: flex;
+        flex-direction: column;
+        min-height: 100dvh;
+        font: 16px/1.5 system-ui, -apple-system, sans-serif;
+      }
+
+      form {
+        display: flex;
+        gap: 0.5rem;
+        padding: 1rem;
+        border-bottom: 1px solid #2a2a2a;
+      }
+
+      input {
+        flex: 1;
+        margin: 0;
+        padding: 0.75rem;
+        border: 1px solid #2a2a2a;
+        outline: none;
+        background: #1a1a1a;
+        color: #e8e8e8;
+        font: inherit;
+        caret-color: #e8e8e8;
+      }
+
+      input::placeholder {
+        color: #6b6b6b;
+      }
+
+      input:focus {
+        border-color: #4a4a4a;
+      }
+
+      button {
+        margin: 0;
+        padding: 0.75rem 1rem;
+        border: 1px solid #2a2a2a;
+        background: #1a1a1a;
+        color: #e8e8e8;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      button:hover {
+        border-color: #4a4a4a;
+        background: #222;
+      }
+
+      button:active {
+        background: #2a2a2a;
+      }
+
+      ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        flex: 1;
+      }
+
+      li {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 1rem;
+        border-bottom: 1px solid #2a2a2a;
+      }
+
+      .message {
+        flex: 1;
+        min-width: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      .meta {
+        display: block;
+        margin-top: 0.35rem;
+        color: #6b6b6b;
+        font-size: 0.8125rem;
+      }
+
+      .delete {
+        flex-shrink: 0;
+        padding: 0.35rem 0.6rem;
+        color: #6b6b6b;
+      }
+
+      .delete:hover {
+        color: #e8e8e8;
+      }
+
+      .empty {
+        margin: 0;
+        padding: 2rem 1rem;
+        color: #6b6b6b;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <form id="compose" autocomplete="off">
+      <input
+        id="message"
+        type="text"
+        placeholder="New inbox message"
+        maxlength="2000"
+        required
+        autofocus
+      />
+      <button type="submit">Add</button>
+    </form>
+    <ul id="list" aria-live="polite"></ul>
+    <p id="empty" class="empty" hidden>No messages</p>
+
+    <script>
+      const STORAGE_KEY = "inbox-messages";
+
+      const form = document.getElementById("compose");
+      const input = document.getElementById("message");
+      const list = document.getElementById("list");
+      const empty = document.getElementById("empty");
+
+      function loadMessages() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return [];
+          const parsed = JSON.parse(raw);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      }
+
+      function saveMessages(messages) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+      }
+
+      function formatTime(iso) {
+        const date = new Date(iso);
+        if (Number.isNaN(date.getTime())) return "";
+        return date.toLocaleString(undefined, {
+          dateStyle: "medium",
+          timeStyle: "short",
+        });
+      }
+
+      function render() {
+        const messages = loadMessages();
+        list.replaceChildren();
+        empty.hidden = messages.length > 0;
+
+        for (const item of messages) {
+          const li = document.createElement("li");
+
+          const body = document.createElement("div");
+          body.className = "message";
+          body.append(document.createTextNode(item.text));
+
+          const meta = document.createElement("span");
+          meta.className = "meta";
+          meta.textContent = formatTime(item.createdAt);
+          body.append(meta);
+
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.className = "delete";
+          remove.setAttribute("aria-label", "Delete message");
+          remove.textContent = "×";
+          remove.addEventListener("click", () => {
+            const next = loadMessages().filter((m) => m.id !== item.id);
+            saveMessages(next);
+            render();
+          });
+
+          li.append(body, remove);
+          list.append(li);
+        }
+      }
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const text = input.value.trim();
+        if (!text) return;
+
+        const messages = loadMessages();
+        messages.unshift({
+          id: crypto.randomUUID(),
+          text,
+          createdAt: new Date().toISOString(),
+        });
+        saveMessages(messages);
+        input.value = "";
+        input.focus();
+        render();
+      });
+
+      render();
+    </script>
+  </body>
+</html>
