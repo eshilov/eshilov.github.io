@@ -1,0 +1,953 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Pomodoro</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background: #121212;
+        color: #e8e8e8;
+      }
+
+      body {
+        display: flex;
+        flex-direction: column;
+        min-height: 100dvh;
+        font: 16px/1.5 system-ui, -apple-system, sans-serif;
+      }
+
+      .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1rem;
+        border-bottom: 1px solid #2a2a2a;
+      }
+
+      .toolbar h1 {
+        flex: 1;
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 600;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      button,
+      input {
+        margin: 0;
+        border: 1px solid #2a2a2a;
+        outline: none;
+        background: #1a1a1a;
+        color: #e8e8e8;
+        font: inherit;
+        caret-color: #e8e8e8;
+      }
+
+      button {
+        padding: 0.75rem 1rem;
+        cursor: pointer;
+      }
+
+      button:hover:not(:disabled) {
+        border-color: #4a4a4a;
+        background: #222;
+      }
+
+      button:active:not(:disabled) {
+        background: #2a2a2a;
+      }
+
+      button:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+
+      input[type="text"],
+      input[type="number"] {
+        width: 100%;
+        padding: 0.75rem;
+      }
+
+      input:focus {
+        border-color: #4a4a4a;
+      }
+
+      input::placeholder {
+        color: #6b6b6b;
+      }
+
+      ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      li {
+        border-bottom: 1px solid #2a2a2a;
+      }
+
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1rem;
+      }
+
+      .row-main {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        align-items: flex-start;
+        padding: 0;
+        border: none;
+        background: transparent;
+        text-align: left;
+        cursor: pointer;
+      }
+
+      .row-main:hover {
+        background: transparent;
+        border-color: transparent;
+      }
+
+      .name {
+        font-weight: 500;
+        word-break: break-word;
+      }
+
+      .meta {
+        color: #6b6b6b;
+        font-size: 0.8125rem;
+      }
+
+      .ghost {
+        flex-shrink: 0;
+        padding: 0.35rem 0.6rem;
+        color: #6b6b6b;
+      }
+
+      .ghost:hover:not(:disabled) {
+        color: #e8e8e8;
+      }
+
+      .empty,
+      .hint,
+      .error {
+        margin: 0;
+        padding: 1rem;
+        color: #6b6b6b;
+        font-size: 0.875rem;
+      }
+
+      .empty {
+        text-align: center;
+        padding: 2rem 1rem;
+      }
+
+      .error {
+        color: #c97a7a;
+        padding-top: 0;
+      }
+
+      .panel {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 1rem;
+      }
+
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+      }
+
+      .field label {
+        color: #6b6b6b;
+        font-size: 0.8125rem;
+      }
+
+      .checks {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .check {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        color: #e8e8e8;
+      }
+
+      .check input {
+        width: auto;
+        accent-color: #e8e8e8;
+      }
+
+      .timer-edit {
+        display: grid;
+        grid-template-columns: 1fr 5.5rem auto;
+        gap: 0.5rem;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #2a2a2a;
+      }
+
+      .timer-edit input[type="number"] {
+        text-align: center;
+      }
+
+      .section-title {
+        margin: 0;
+        padding: 1rem 1rem 0.25rem;
+        color: #6b6b6b;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .run {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        flex: 1;
+        padding: 2rem 1rem;
+        text-align: center;
+      }
+
+      .run-label {
+        color: #6b6b6b;
+        font-size: 0.875rem;
+      }
+
+      .run-name {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+        word-break: break-word;
+      }
+
+      .run-time {
+        margin: 0.5rem 0;
+        font-variant-numeric: tabular-nums;
+        font-size: clamp(3rem, 16vw, 5rem);
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        line-height: 1;
+      }
+
+      .run-status {
+        color: #6b6b6b;
+        font-size: 0.875rem;
+        text-transform: lowercase;
+      }
+
+      .queue {
+        width: 100%;
+        max-width: 28rem;
+        margin-top: 1rem;
+        border-top: 1px solid #2a2a2a;
+        text-align: left;
+      }
+
+      .queue li {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.65rem 0;
+        color: #6b6b6b;
+        border-bottom: 1px solid #2a2a2a;
+      }
+
+      .queue li.current {
+        color: #e8e8e8;
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <section id="scenarios-view">
+      <div class="toolbar">
+        <h1>Pomodoro</h1>
+        <button type="button" id="new-scenario">New scenario</button>
+      </div>
+      <ul id="scenario-list"></ul>
+      <p id="scenarios-empty" class="empty" hidden>No scenarios</p>
+    </section>
+
+    <section id="editor-view" hidden>
+      <div class="toolbar">
+        <button type="button" id="editor-back">Back</button>
+        <h1 id="editor-heading">Scenario</h1>
+        <button type="button" id="run-scenario">Start</button>
+      </div>
+      <form id="scenario-form" class="panel" autocomplete="off">
+        <div class="field">
+          <label for="scenario-name">Name</label>
+          <input
+            id="scenario-name"
+            type="text"
+            maxlength="120"
+            placeholder="Scenario name"
+            required
+          />
+        </div>
+        <div class="checks">
+          <label class="check">
+            <input id="scenario-cycle" type="checkbox" />
+            Cycle timers
+          </label>
+          <label class="check">
+            <input id="scenario-autostart" type="checkbox" />
+            Start next timer automatically
+          </label>
+        </div>
+        <p id="editor-error" class="error" hidden></p>
+        <div class="actions">
+          <button type="submit">Save scenario</button>
+          <button type="button" id="add-timer">Add timer</button>
+        </div>
+      </form>
+      <p class="section-title">Timers</p>
+      <div id="timer-list"></div>
+      <p id="timers-empty" class="empty" hidden>Add at least one timer</p>
+      <p class="hint">Each timer must be at least 1 minute. Order is fixed.</p>
+    </section>
+
+    <section id="run-view" hidden>
+      <div class="toolbar">
+        <button type="button" id="run-back">Back</button>
+        <h1 id="run-scenario-name">Scenario</h1>
+      </div>
+      <div class="run">
+        <div class="run-label">Current timer</div>
+        <h2 class="run-name" id="run-timer-name">—</h2>
+        <p class="run-time" id="run-time">00:00</p>
+        <div class="run-status" id="run-status">stopped</div>
+        <div class="actions">
+          <button type="button" id="ctrl-start">Start</button>
+          <button type="button" id="ctrl-pause" hidden>Pause</button>
+          <button type="button" id="ctrl-resume" hidden>Resume</button>
+          <button type="button" id="ctrl-stop">Stop</button>
+          <button type="button" id="ctrl-next">Next</button>
+        </div>
+        <div class="checks" style="align-items: center; margin-top: 0.5rem">
+          <label class="check">
+            <input id="run-notifications" type="checkbox" />
+            Browser notifications (this session)
+          </label>
+        </div>
+        <p id="notify-hint" class="hint" hidden style="padding: 0; text-align: center"></p>
+        <ul class="queue" id="run-queue"></ul>
+      </div>
+    </section>
+
+    <script>
+      const STORAGE_KEY = "pomodoro-scenarios";
+
+      const scenariosView = document.getElementById("scenarios-view");
+      const editorView = document.getElementById("editor-view");
+      const runView = document.getElementById("run-view");
+      const scenarioList = document.getElementById("scenario-list");
+      const scenariosEmpty = document.getElementById("scenarios-empty");
+      const editorHeading = document.getElementById("editor-heading");
+      const scenarioForm = document.getElementById("scenario-form");
+      const scenarioName = document.getElementById("scenario-name");
+      const scenarioCycle = document.getElementById("scenario-cycle");
+      const scenarioAutostart = document.getElementById("scenario-autostart");
+      const editorError = document.getElementById("editor-error");
+      const timerList = document.getElementById("timer-list");
+      const timersEmpty = document.getElementById("timers-empty");
+      const runScenarioName = document.getElementById("run-scenario-name");
+      const runTimerName = document.getElementById("run-timer-name");
+      const runTime = document.getElementById("run-time");
+      const runStatus = document.getElementById("run-status");
+      const runQueue = document.getElementById("run-queue");
+      const ctrlStart = document.getElementById("ctrl-start");
+      const ctrlPause = document.getElementById("ctrl-pause");
+      const ctrlResume = document.getElementById("ctrl-resume");
+      const ctrlStop = document.getElementById("ctrl-stop");
+      const ctrlNext = document.getElementById("ctrl-next");
+      const runNotifications = document.getElementById("run-notifications");
+      const notifyHint = document.getElementById("notify-hint");
+
+      let editingId = null;
+      let draftTimers = [];
+      let activeScenarioId = null;
+      let activeIndex = 0;
+      let remainingMs = 0;
+      let status = "stopped";
+      let tickId = null;
+      let lastTick = 0;
+      let notificationsEnabled = false;
+
+      function uid() {
+        return crypto.randomUUID();
+      }
+
+      function loadScenarios() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return [];
+          const parsed = JSON.parse(raw);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      }
+
+      function saveScenarios(scenarios) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(scenarios));
+      }
+
+      function getScenario(id) {
+        return loadScenarios().find((s) => s.id === id) || null;
+      }
+
+      function showView(view) {
+        scenariosView.hidden = view !== "scenarios";
+        editorView.hidden = view !== "editor";
+        runView.hidden = view !== "run";
+      }
+
+      function setError(el, message) {
+        if (!message) {
+          el.hidden = true;
+          el.textContent = "";
+          return;
+        }
+        el.hidden = false;
+        el.textContent = message;
+      }
+
+      function formatDuration(ms) {
+        const total = Math.max(0, Math.ceil(ms / 1000));
+        const minutes = Math.floor(total / 60);
+        const seconds = total % 60;
+        return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+      }
+
+      function summarizeScenario(scenario) {
+        const count = scenario.timers.length;
+        const flags = [
+          scenario.cycle ? "cycles" : "no cycle",
+          scenario.autoStart ? "auto-start" : "manual",
+        ];
+        return `${count} timer${count === 1 ? "" : "s"} · ${flags.join(" · ")}`;
+      }
+
+      function renderScenarios() {
+        const scenarios = loadScenarios();
+        scenarioList.replaceChildren();
+        scenariosEmpty.hidden = scenarios.length > 0;
+
+        for (const scenario of scenarios) {
+          const li = document.createElement("li");
+          const row = document.createElement("div");
+          row.className = "row";
+
+          const open = document.createElement("button");
+          open.type = "button";
+          open.className = "row-main";
+
+          const name = document.createElement("span");
+          name.className = "name";
+          name.textContent = scenario.name;
+
+          const meta = document.createElement("span");
+          meta.className = "meta";
+          meta.textContent = summarizeScenario(scenario);
+
+          open.append(name, meta);
+          open.addEventListener("click", () => openEditor(scenario.id));
+
+          const run = document.createElement("button");
+          run.type = "button";
+          run.textContent = "Start";
+          run.disabled = scenario.timers.length === 0;
+          run.addEventListener("click", () => startRun(scenario.id));
+
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.className = "ghost";
+          remove.setAttribute("aria-label", "Delete scenario");
+          remove.textContent = "×";
+          remove.addEventListener("click", () => {
+            if (!confirm(`Delete “${scenario.name}”?`)) return;
+            saveScenarios(loadScenarios().filter((s) => s.id !== scenario.id));
+            renderScenarios();
+          });
+
+          row.append(open, run, remove);
+          li.append(row);
+          scenarioList.append(li);
+        }
+      }
+
+      function renderDraftTimers() {
+        timerList.replaceChildren();
+        timersEmpty.hidden = draftTimers.length > 0;
+
+        draftTimers.forEach((timer, index) => {
+          const row = document.createElement("div");
+          row.className = "timer-edit";
+
+          const name = document.createElement("input");
+          name.type = "text";
+          name.value = timer.name;
+          name.maxLength = 120;
+          name.placeholder = "Timer name";
+          name.required = true;
+          name.addEventListener("input", () => {
+            draftTimers[index].name = name.value;
+          });
+
+          const minutes = document.createElement("input");
+          minutes.type = "number";
+          minutes.min = "1";
+          minutes.step = "1";
+          minutes.value = String(timer.minutes);
+          minutes.setAttribute("aria-label", "Minutes");
+          minutes.addEventListener("change", () => {
+            const value = Math.max(1, Math.floor(Number(minutes.value) || 1));
+            minutes.value = String(value);
+            draftTimers[index].minutes = value;
+          });
+
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.className = "ghost";
+          remove.setAttribute("aria-label", "Remove timer");
+          remove.textContent = "×";
+          remove.addEventListener("click", () => {
+            draftTimers.splice(index, 1);
+            renderDraftTimers();
+          });
+
+          row.append(name, minutes, remove);
+          timerList.append(row);
+        });
+      }
+
+      function openEditor(id) {
+        const scenario = id ? getScenario(id) : null;
+        editingId = scenario ? scenario.id : null;
+        editorHeading.textContent = scenario ? "Edit scenario" : "New scenario";
+        scenarioName.value = scenario ? scenario.name : "";
+        scenarioCycle.checked = scenario ? !!scenario.cycle : false;
+        scenarioAutostart.checked = scenario ? !!scenario.autoStart : false;
+        draftTimers = scenario
+          ? scenario.timers.map((t) => ({ ...t }))
+          : [{ id: uid(), name: "Focus", minutes: 25 }];
+        setError(editorError, "");
+        document.getElementById("run-scenario").disabled = draftTimers.length === 0;
+        renderDraftTimers();
+        showView("editor");
+        scenarioName.focus();
+      }
+
+      function collectDraftTimers() {
+        return draftTimers.map((timer) => ({
+          id: timer.id || uid(),
+          name: String(timer.name || "").trim() || "Timer",
+          minutes: Math.max(1, Math.floor(Number(timer.minutes) || 1)),
+        }));
+      }
+
+      function clearTick() {
+        if (tickId !== null) {
+          clearInterval(tickId);
+          tickId = null;
+        }
+      }
+
+      function setRunStatus(next) {
+        status = next;
+        runStatus.textContent = next;
+        ctrlStart.hidden = next !== "stopped";
+        ctrlPause.hidden = next !== "running";
+        ctrlResume.hidden = next !== "paused";
+        ctrlStop.disabled = next === "stopped";
+      }
+
+      function renderRun() {
+        const scenario = getScenario(activeScenarioId);
+        if (!scenario || scenario.timers.length === 0) {
+          runTimerName.textContent = "—";
+          runTime.textContent = "00:00";
+          runQueue.replaceChildren();
+          return;
+        }
+
+        const timer = scenario.timers[activeIndex];
+        runScenarioName.textContent = scenario.name;
+        runTimerName.textContent = timer ? timer.name : "—";
+        runTime.textContent = formatDuration(remainingMs);
+
+        runQueue.replaceChildren();
+        scenario.timers.forEach((item, index) => {
+          const li = document.createElement("li");
+          if (index === activeIndex) li.className = "current";
+          const label = document.createElement("span");
+          label.textContent = item.name;
+          const duration = document.createElement("span");
+          duration.textContent = `${item.minutes} min`;
+          li.append(label, duration);
+          runQueue.append(li);
+        });
+      }
+
+      function loadTimerDuration(scenario, index) {
+        const timer = scenario.timers[index];
+        return timer ? timer.minutes * 60 * 1000 : 0;
+      }
+
+      function advanceIndex(scenario, fromIndex) {
+        if (scenario.timers.length === 0) return null;
+        const next = fromIndex + 1;
+        if (next < scenario.timers.length) return next;
+        if (scenario.cycle) return 0;
+        return null;
+      }
+
+      function setNotifyHint(message) {
+        if (!message) {
+          notifyHint.hidden = true;
+          notifyHint.textContent = "";
+          return;
+        }
+        notifyHint.hidden = false;
+        notifyHint.textContent = message;
+      }
+
+      function syncNotificationToggle() {
+        runNotifications.checked = notificationsEnabled;
+        if (!("Notification" in window)) {
+          runNotifications.disabled = true;
+          setNotifyHint("Notifications are not supported in this browser.");
+          return;
+        }
+        runNotifications.disabled = false;
+        if (Notification.permission === "denied") {
+          setNotifyHint("Notifications are blocked for this site.");
+        } else if (!notificationsEnabled) {
+          setNotifyHint("");
+        }
+      }
+
+      function notify(title, body) {
+        if (!notificationsEnabled || !("Notification" in window)) return;
+        if (Notification.permission !== "granted") return;
+        try {
+          const notification = new Notification(title, {
+            body,
+            silent: false,
+          });
+          notification.onclick = () => {
+            window.focus();
+            notification.close();
+          };
+        } catch {
+          // Ignore notification failures (unsupported options, etc.).
+        }
+      }
+
+      async function enableNotifications() {
+        if (!("Notification" in window)) {
+          notificationsEnabled = false;
+          syncNotificationToggle();
+          return false;
+        }
+
+        let permission = Notification.permission;
+        if (permission === "default") {
+          permission = await Notification.requestPermission();
+        }
+
+        if (permission !== "granted") {
+          notificationsEnabled = false;
+          syncNotificationToggle();
+          setNotifyHint(
+            permission === "denied"
+              ? "Notifications are blocked for this site."
+              : "Permission was not granted.",
+          );
+          return false;
+        }
+
+        notificationsEnabled = true;
+        syncNotificationToggle();
+        setNotifyHint("Notifications on for this session.");
+        return true;
+      }
+
+      function completeCurrent() {
+        const scenario = getScenario(activeScenarioId);
+        if (!scenario) {
+          stopRun(true);
+          return;
+        }
+
+        const finished = scenario.timers[activeIndex];
+        const finishedName = finished ? finished.name : "Timer";
+        const nextIndex = advanceIndex(scenario, activeIndex);
+
+        if (nextIndex === null) {
+          notify("Pomodoro", `“${finishedName}” finished. Scenario complete.`);
+          stopRun(true);
+          return;
+        }
+
+        const nextTimer = scenario.timers[nextIndex];
+        const nextName = nextTimer ? nextTimer.name : "Next timer";
+        notify(
+          "Pomodoro",
+          scenario.autoStart
+            ? `“${finishedName}” finished. Starting “${nextName}”.`
+            : `“${finishedName}” finished. Next up: “${nextName}”.`,
+        );
+
+        activeIndex = nextIndex;
+        remainingMs = loadTimerDuration(scenario, activeIndex);
+        renderRun();
+
+        if (scenario.autoStart) {
+          beginRunning();
+        } else {
+          clearTick();
+          setRunStatus("paused");
+        }
+      }
+
+      function beginRunning() {
+        clearTick();
+        setRunStatus("running");
+        lastTick = Date.now();
+        tickId = setInterval(() => {
+          const now = Date.now();
+          const delta = now - lastTick;
+          lastTick = now;
+          remainingMs -= delta;
+          if (remainingMs <= 0) {
+            remainingMs = 0;
+            renderRun();
+            completeCurrent();
+            return;
+          }
+          renderRun();
+        }, 200);
+        renderRun();
+      }
+
+      function startRun(scenarioId, startImmediately = true) {
+        const scenario = getScenario(scenarioId);
+        if (!scenario || scenario.timers.length === 0) return;
+
+        clearTick();
+        activeScenarioId = scenario.id;
+        activeIndex = 0;
+        remainingMs = loadTimerDuration(scenario, 0);
+        showView("run");
+        syncNotificationToggle();
+        renderRun();
+
+        if (startImmediately) beginRunning();
+        else setRunStatus("stopped");
+      }
+
+      function stopRun(keepView = true) {
+        clearTick();
+        const scenario = getScenario(activeScenarioId);
+        activeIndex = 0;
+        remainingMs = scenario ? loadTimerDuration(scenario, 0) : 0;
+        setRunStatus("stopped");
+        renderRun();
+        if (!keepView) {
+          activeScenarioId = null;
+          showView("editor");
+        }
+      }
+
+      function goNext() {
+        const scenario = getScenario(activeScenarioId);
+        if (!scenario || scenario.timers.length === 0) return;
+
+        const wasRunning = status === "running";
+        const nextIndex = advanceIndex(scenario, activeIndex);
+        if (nextIndex === null) {
+          stopRun(true);
+          return;
+        }
+
+        activeIndex = nextIndex;
+        remainingMs = loadTimerDuration(scenario, activeIndex);
+        renderRun();
+
+        if (wasRunning) {
+          beginRunning();
+        } else if (status === "stopped") {
+          setRunStatus("stopped");
+        } else {
+          clearTick();
+          setRunStatus("paused");
+        }
+      }
+
+      document.getElementById("new-scenario").addEventListener("click", () => {
+        openEditor(null);
+      });
+
+      document.getElementById("editor-back").addEventListener("click", () => {
+        editingId = null;
+        showView("scenarios");
+        renderScenarios();
+      });
+
+      document.getElementById("add-timer").addEventListener("click", () => {
+        draftTimers.push({ id: uid(), name: "Timer", minutes: 5 });
+        renderDraftTimers();
+        document.getElementById("run-scenario").disabled = false;
+      });
+
+      scenarioForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const name = scenarioName.value.trim();
+        const timers = collectDraftTimers();
+
+        if (!name) {
+          setError(editorError, "Name is required.");
+          return;
+        }
+        if (timers.length === 0) {
+          setError(editorError, "Add at least one timer.");
+          return;
+        }
+        if (timers.some((t) => t.minutes < 1)) {
+          setError(editorError, "Each timer must be at least 1 minute.");
+          return;
+        }
+
+        const scenarios = loadScenarios();
+        const payload = {
+          id: editingId || uid(),
+          name,
+          cycle: scenarioCycle.checked,
+          autoStart: scenarioAutostart.checked,
+          timers,
+        };
+
+        if (editingId) {
+          const index = scenarios.findIndex((s) => s.id === editingId);
+          if (index === -1) scenarios.push(payload);
+          else scenarios[index] = payload;
+        } else {
+          scenarios.unshift(payload);
+          editingId = payload.id;
+        }
+
+        saveScenarios(scenarios);
+        draftTimers = timers.map((t) => ({ ...t }));
+        editorHeading.textContent = "Edit scenario";
+        setError(editorError, "");
+        document.getElementById("run-scenario").disabled = false;
+        renderDraftTimers();
+      });
+
+      document.getElementById("run-scenario").addEventListener("click", () => {
+        scenarioForm.requestSubmit();
+        if (!editingId) return;
+        const scenario = getScenario(editingId);
+        if (!scenario || scenario.timers.length === 0) {
+          setError(editorError, "Save a scenario with at least one timer first.");
+          return;
+        }
+        startRun(scenario.id);
+      });
+
+      document.getElementById("run-back").addEventListener("click", () => {
+        clearTick();
+        setRunStatus("stopped");
+        const id = activeScenarioId;
+        activeScenarioId = null;
+        if (id) openEditor(id);
+        else {
+          showView("scenarios");
+          renderScenarios();
+        }
+      });
+
+      ctrlStart.addEventListener("click", () => {
+        if (!activeScenarioId) return;
+        if (remainingMs <= 0) {
+          const scenario = getScenario(activeScenarioId);
+          remainingMs = loadTimerDuration(scenario, activeIndex);
+        }
+        beginRunning();
+      });
+
+      ctrlPause.addEventListener("click", () => {
+        clearTick();
+        setRunStatus("paused");
+      });
+
+      ctrlResume.addEventListener("click", () => {
+        beginRunning();
+      });
+
+      ctrlStop.addEventListener("click", () => {
+        stopRun(true);
+      });
+
+      ctrlNext.addEventListener("click", () => {
+        goNext();
+      });
+
+      runNotifications.addEventListener("change", async () => {
+        if (runNotifications.checked) {
+          const ok = await enableNotifications();
+          if (!ok) runNotifications.checked = false;
+          return;
+        }
+        notificationsEnabled = false;
+        setNotifyHint("");
+      });
+
+      window.addEventListener("beforeunload", () => {
+        clearTick();
+      });
+
+      renderScenarios();
+    </script>
+  </body>
+</html>
