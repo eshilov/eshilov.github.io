@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Journal</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background: #121212;
+        color: #e8e8e8;
+      }
+
+      body {
+        display: flex;
+        flex-direction: column;
+        min-height: 100dvh;
+        font: 16px/1.5 system-ui, -apple-system, sans-serif;
+      }
+
+      .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1rem;
+        border-bottom: 1px solid #2a2a2a;
+      }
+
+      .toolbar h1 {
+        flex: 1;
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 600;
+      }
+
+      button,
+      input,
+      textarea {
+        margin: 0;
+        border: 1px solid #2a2a2a;
+        outline: none;
+        background: #1a1a1a;
+        color: #e8e8e8;
+        font: inherit;
+        caret-color: #e8e8e8;
+      }
+
+      button {
+        padding: 0.75rem 1rem;
+        cursor: pointer;
+      }
+
+      button:hover {
+        border-color: #4a4a4a;
+        background: #222;
+      }
+
+      button:active {
+        background: #2a2a2a;
+      }
+
+      button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+
+      input,
+      textarea {
+        width: 100%;
+        padding: 0.75rem;
+      }
+
+      input:focus,
+      textarea:focus {
+        border-color: #4a4a4a;
+      }
+
+      input::placeholder,
+      textarea::placeholder {
+        color: #6b6b6b;
+      }
+
+      textarea {
+        resize: vertical;
+        min-height: 12rem;
+        line-height: 1.5;
+      }
+
+      ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        flex: 1;
+      }
+
+      li {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        border-bottom: 1px solid #2a2a2a;
+      }
+
+      .note-open {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+        padding: 1rem;
+        border: none;
+        background: transparent;
+        text-align: left;
+        cursor: pointer;
+      }
+
+      .note-open:hover {
+        background: #1a1a1a;
+        border-color: transparent;
+      }
+
+      .note-title {
+        font-weight: 500;
+        word-break: break-word;
+      }
+
+      .meta {
+        color: #6b6b6b;
+        font-size: 0.8125rem;
+      }
+
+      .delete {
+        flex-shrink: 0;
+        margin-right: 0.75rem;
+        padding: 0.35rem 0.6rem;
+        color: #6b6b6b;
+      }
+
+      .delete:hover {
+        color: #e8e8e8;
+      }
+
+      .empty {
+        margin: 0;
+        padding: 2rem 1rem;
+        color: #6b6b6b;
+        text-align: center;
+      }
+
+      .panel {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 1rem;
+        flex: 1;
+      }
+
+      .error {
+        margin: 0;
+        color: #c97a7a;
+        font-size: 0.875rem;
+      }
+
+      .hint {
+        margin: 0;
+        color: #6b6b6b;
+        font-size: 0.8125rem;
+      }
+
+      .actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <section id="list-view">
+      <div class="toolbar">
+        <h1>Journal</h1>
+        <button type="button" id="new-note">New note</button>
+      </div>
+      <ul id="list" aria-live="polite"></ul>
+      <p id="empty" class="empty" hidden>No notes</p>
+    </section>
+
+    <section id="editor-view" hidden>
+      <div class="toolbar">
+        <button type="button" id="back">Back</button>
+        <h1 id="editor-heading">New note</h1>
+      </div>
+      <form id="editor" class="panel" autocomplete="off">
+        <input
+          id="title"
+          type="text"
+          placeholder="Title (stored unencrypted)"
+          maxlength="200"
+          required
+        />
+        <textarea
+          id="body"
+          placeholder="Note body (encrypted with your password)"
+          maxlength="100000"
+          required
+        ></textarea>
+        <input
+          id="password"
+          type="password"
+          placeholder="Password"
+          autocomplete="new-password"
+          required
+        />
+        <p class="hint" id="password-hint">
+          Choose a password to encrypt this note. Only the title is stored in
+          plain text.
+        </p>
+        <p id="error" class="error" hidden></p>
+        <div class="actions">
+          <button type="submit" id="save">Save</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="unlock-view" hidden>
+      <div class="toolbar">
+        <button type="button" id="unlock-back">Back</button>
+        <h1 id="unlock-title">Unlock note</h1>
+      </div>
+      <form id="unlock" class="panel" autocomplete="off">
+        <p class="hint">Enter the password used when this note was saved.</p>
+        <input
+          id="unlock-password"
+          type="password"
+          placeholder="Password"
+          autocomplete="current-password"
+          required
+          autofocus
+        />
+        <p id="unlock-error" class="error" hidden></p>
+        <div class="actions">
+          <button type="submit">Unlock</button>
+        </div>
+      </form>
+    </section>
+
+    <script>
+      const STORAGE_KEY = "journal-notes";
+      const PBKDF2_ITERATIONS = 310000;
+
+      const listView = document.getElementById("list-view");
+      const editorView = document.getElementById("editor-view");
+      const unlockView = document.getElementById("unlock-view");
+      const list = document.getElementById("list");
+      const empty = document.getElementById("empty");
+      const editor = document.getElementById("editor");
+      const editorHeading = document.getElementById("editor-heading");
+      const titleInput = document.getElementById("title");
+      const bodyInput = document.getElementById("body");
+      const passwordInput = document.getElementById("password");
+      const passwordHint = document.getElementById("password-hint");
+      const errorEl = document.getElementById("error");
+      const unlockForm = document.getElementById("unlock");
+      const unlockTitle = document.getElementById("unlock-title");
+      const unlockPassword = document.getElementById("unlock-password");
+      const unlockError = document.getElementById("unlock-error");
+
+      let editingId = null;
+      let unlockTargetId = null;
+
+      function loadNotes() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return [];
+          const parsed = JSON.parse(raw);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      }
+
+      function saveNotes(notes) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+      }
+
+      function formatTime(iso) {
+        const date = new Date(iso);
+        if (Number.isNaN(date.getTime())) return "";
+        return date.toLocaleString(undefined, {
+          dateStyle: "medium",
+          timeStyle: "short",
+        });
+      }
+
+      function bytesToBase64(bytes) {
+        let binary = "";
+        for (const byte of bytes) binary += String.fromCharCode(byte);
+        return btoa(binary);
+      }
+
+      function base64ToBytes(value) {
+        const binary = atob(value);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i += 1) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        return bytes;
+      }
+
+      async function deriveKey(password, salt) {
+        const material = await crypto.subtle.importKey(
+          "raw",
+          new TextEncoder().encode(password),
+          "PBKDF2",
+          false,
+          ["deriveKey"],
+        );
+        return crypto.subtle.deriveKey(
+          {
+            name: "PBKDF2",
+            salt,
+            iterations: PBKDF2_ITERATIONS,
+            hash: "SHA-256",
+          },
+          material,
+          { name: "AES-GCM", length: 256 },
+          false,
+          ["encrypt", "decrypt"],
+        );
+      }
+
+      async function encryptBody(text, password) {
+        const salt = crypto.getRandomValues(new Uint8Array(16));
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const key = await deriveKey(password, salt);
+        const ciphertext = await crypto.subtle.encrypt(
+          { name: "AES-GCM", iv },
+          key,
+          new TextEncoder().encode(text),
+        );
+        return {
+          salt: bytesToBase64(salt),
+          iv: bytesToBase64(iv),
+          ciphertext: bytesToBase64(new Uint8Array(ciphertext)),
+        };
+      }
+
+      async function decryptBody(note, password) {
+        const salt = base64ToBytes(note.salt);
+        const iv = base64ToBytes(note.iv);
+        const ciphertext = base64ToBytes(note.ciphertext);
+        const key = await deriveKey(password, salt);
+        const plain = await crypto.subtle.decrypt(
+          { name: "AES-GCM", iv },
+          key,
+          ciphertext,
+        );
+        return new TextDecoder().decode(plain);
+      }
+
+      function showView(view) {
+        listView.hidden = view !== "list";
+        editorView.hidden = view !== "editor";
+        unlockView.hidden = view !== "unlock";
+      }
+
+      function setError(el, message) {
+        if (!message) {
+          el.hidden = true;
+          el.textContent = "";
+          return;
+        }
+        el.hidden = false;
+        el.textContent = message;
+      }
+
+      function renderList() {
+        const notes = loadNotes().slice().sort((a, b) => {
+          return String(b.updatedAt).localeCompare(String(a.updatedAt));
+        });
+        list.replaceChildren();
+        empty.hidden = notes.length > 0;
+
+        for (const note of notes) {
+          const li = document.createElement("li");
+
+          const open = document.createElement("button");
+          open.type = "button";
+          open.className = "note-open";
+
+          const title = document.createElement("span");
+          title.className = "note-title";
+          title.textContent = note.title || "Untitled";
+
+          const meta = document.createElement("span");
+          meta.className = "meta";
+          meta.textContent = formatTime(note.updatedAt || note.createdAt);
+
+          open.append(title, meta);
+          open.addEventListener("click", () => openUnlock(note));
+
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.className = "delete";
+          remove.setAttribute("aria-label", "Delete note");
+          remove.textContent = "×";
+          remove.addEventListener("click", () => {
+            if (!confirm(`Delete “${note.title || "Untitled"}”?`)) return;
+            saveNotes(loadNotes().filter((n) => n.id !== note.id));
+            renderList();
+          });
+
+          li.append(open, remove);
+          list.append(li);
+        }
+      }
+
+      function openCreate() {
+        editingId = null;
+        editorHeading.textContent = "New note";
+        titleInput.value = "";
+        bodyInput.value = "";
+        passwordInput.value = "";
+        passwordHint.textContent =
+          "Choose a password to encrypt this note. Only the title is stored in plain text.";
+        setError(errorEl, "");
+        showView("editor");
+        titleInput.focus();
+      }
+
+      function openUnlock(note) {
+        unlockTargetId = note.id;
+        unlockTitle.textContent = note.title || "Untitled";
+        unlockPassword.value = "";
+        setError(unlockError, "");
+        showView("unlock");
+        unlockPassword.focus();
+      }
+
+      async function openEditor(note, body, password) {
+        editingId = note.id;
+        editorHeading.textContent = "Edit note";
+        titleInput.value = note.title || "";
+        bodyInput.value = body;
+        passwordInput.value = password;
+        passwordHint.textContent =
+          "Re-enter the password to save changes. The body is encrypted again on save.";
+        setError(errorEl, "");
+        showView("editor");
+        bodyInput.focus();
+      }
+
+      document.getElementById("new-note").addEventListener("click", openCreate);
+
+      document.getElementById("back").addEventListener("click", () => {
+        editingId = null;
+        showView("list");
+        renderList();
+      });
+
+      document.getElementById("unlock-back").addEventListener("click", () => {
+        unlockTargetId = null;
+        showView("list");
+      });
+
+      unlockForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const note = loadNotes().find((n) => n.id === unlockTargetId);
+        if (!note) {
+          setError(unlockError, "Note not found.");
+          return;
+        }
+
+        const password = unlockPassword.value;
+        unlockForm.querySelector("button[type='submit']").disabled = true;
+        setError(unlockError, "");
+
+        try {
+          const body = await decryptBody(note, password);
+          await openEditor(note, body, password);
+        } catch {
+          setError(unlockError, "Wrong password or corrupted note.");
+        } finally {
+          unlockForm.querySelector("button[type='submit']").disabled = false;
+        }
+      });
+
+      editor.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const title = titleInput.value.trim();
+        const body = bodyInput.value;
+        const password = passwordInput.value;
+
+        if (!title) {
+          setError(errorEl, "Title is required.");
+          return;
+        }
+        if (!password) {
+          setError(errorEl, "Password is required to encrypt the note.");
+          return;
+        }
+
+        const saveButton = document.getElementById("save");
+        saveButton.disabled = true;
+        setError(errorEl, "");
+
+        try {
+          const encrypted = await encryptBody(body, password);
+          const now = new Date().toISOString();
+          const notes = loadNotes();
+
+          if (editingId) {
+            const index = notes.findIndex((n) => n.id === editingId);
+            if (index === -1) throw new Error("missing");
+            notes[index] = {
+              ...notes[index],
+              title,
+              ...encrypted,
+              updatedAt: now,
+            };
+          } else {
+            notes.unshift({
+              id: crypto.randomUUID(),
+              title,
+              ...encrypted,
+              createdAt: now,
+              updatedAt: now,
+            });
+          }
+
+          saveNotes(notes);
+          editingId = null;
+          unlockTargetId = null;
+          showView("list");
+          renderList();
+        } catch {
+          setError(errorEl, "Could not encrypt and save the note.");
+        } finally {
+          saveButton.disabled = false;
+        }
+      });
+
+      renderList();
+    </script>
+  </body>
+</html>
