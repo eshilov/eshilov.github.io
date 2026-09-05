@@ -2,13 +2,52 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Todo</title>
-    <script type="module" crossorigin src="/assets/index-BsMkQvoR.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-C8AuuLcw.css">
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Notes</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #121212;
+        color: #e8e8e8;
+      }
+
+      body {
+        display: flex;
+        min-height: 100dvh;
+      }
+
+      textarea {
+        flex: 1;
+        width: 100%;
+        min-height: 100%;
+        margin: 0;
+        padding: 1rem;
+        border: none;
+        outline: none;
+        resize: none;
+        background: #121212;
+        color: #e8e8e8;
+        font: 16px/1.5 system-ui, -apple-system, sans-serif;
+        caret-color: #e8e8e8;
+      }
+
+      textarea::placeholder {
+        color: #6b6b6b;
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <textarea autofocus></textarea>
   </body>
 </html>
