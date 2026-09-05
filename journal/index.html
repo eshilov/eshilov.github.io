@@ -92,9 +92,76 @@
       }
 
       textarea {
-        resize: vertical;
+        resize: none;
+        overflow: hidden;
         min-height: 12rem;
         line-height: 1.5;
+      }
+
+      #editor-view {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+
+      #editor-view[hidden] {
+        display: none !important;
+      }
+
+      #editor {
+        min-height: 0;
+      }
+
+      #editor-view.focus-mode {
+        position: fixed;
+        inset: 0;
+        z-index: 20;
+        background: #121212;
+      }
+
+      body.focus-mode .site-nav {
+        display: none !important;
+      }
+
+      #editor-view.focus-mode .focus-hide {
+        display: none !important;
+      }
+
+      #editor-view.focus-mode #body {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+        border: none;
+        background: transparent;
+        padding: 1.25rem 1rem;
+        font-size: 1.05rem;
+        line-height: 1.65;
+      }
+
+      #editor-view.focus-mode .panel {
+        padding: 0;
+        gap: 0;
+      }
+
+      #editor-view.focus-mode #error:not([hidden]) {
+        padding: 0 1rem 0.75rem;
+      }
+
+      #editor-view.focus-mode .toolbar {
+        border-bottom-color: #1f1f1f;
+      }
+
+      #editor-view.focus-mode .focus-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        padding: 0.75rem 1rem 1rem;
+        border-top: 1px solid #1f1f1f;
+      }
+
+      .focus-actions {
+        display: none;
       }
 
       ul {
@@ -200,37 +267,42 @@
 
     <section id="editor-view" hidden>
       <div class="toolbar">
-        <button type="button" id="back">Back</button>
+        <button type="button" id="back" class="focus-hide">Back</button>
+        <button type="button" id="exit-focus" hidden>Exit focus</button>
         <h1 id="editor-heading">New note</h1>
+        <button type="button" id="focus-mode">Focus</button>
       </div>
       <form id="editor" class="panel" autocomplete="off">
         <input
           id="title"
+          class="focus-hide"
           type="text"
           placeholder="Title (stored unencrypted)"
           maxlength="200"
-          required
         />
         <textarea
           id="body"
           placeholder="Note body (encrypted with your password)"
           maxlength="100000"
-          required
         ></textarea>
         <input
           id="password"
+          class="focus-hide"
           type="password"
           placeholder="Password"
           autocomplete="new-password"
-          required
         />
-        <p class="hint" id="password-hint">
+        <p class="hint focus-hide" id="password-hint">
           Choose a password to encrypt this note. Only the title is stored in
           plain text.
         </p>
         <p id="error" class="error" hidden></p>
-        <div class="actions">
+        <div class="actions focus-hide">
           <button type="submit" id="save">Save</button>
+        </div>
+        <div class="focus-actions">
+          <button type="submit" id="save-focus">Save</button>
+          <button type="button" id="exit-focus-bottom">Exit focus</button>
         </div>
       </form>
     </section>
@@ -277,9 +349,33 @@
       const unlockTitle = document.getElementById("unlock-title");
       const unlockPassword = document.getElementById("unlock-password");
       const unlockError = document.getElementById("unlock-error");
+      const focusModeButton = document.getElementById("focus-mode");
+      const exitFocusButton = document.getElementById("exit-focus");
+      const exitFocusBottom = document.getElementById("exit-focus-bottom");
 
       let editingId = null;
       let unlockTargetId = null;
+      let focusMode = false;
+
+      function autosizeBody() {
+        if (focusMode) {
+          bodyInput.style.height = "";
+          return;
+        }
+        bodyInput.style.height = "auto";
+        bodyInput.style.height = `${Math.max(bodyInput.scrollHeight, 192)}px`;
+      }
+
+      function setFocusMode(enabled) {
+        focusMode = enabled;
+        editorView.classList.toggle("focus-mode", enabled);
+        document.body.classList.toggle("focus-mode", enabled);
+        focusModeButton.hidden = enabled;
+        exitFocusButton.hidden = !enabled;
+        document.getElementById("back").hidden = enabled;
+        autosizeBody();
+        if (enabled) bodyInput.focus();
+      }
 
       function loadNotes() {
         try {
@@ -372,6 +468,7 @@
       }
 
       function showView(view) {
+        if (view !== "editor") setFocusMode(false);
         listView.hidden = view !== "list";
         editorView.hidden = view !== "editor";
         unlockView.hidden = view !== "unlock";
@@ -438,6 +535,7 @@
           "Choose a password to encrypt this note. Only the title is stored in plain text.";
         setError(errorEl, "");
         showView("editor");
+        autosizeBody();
         titleInput.focus();
       }
 
@@ -460,6 +558,8 @@
           "Re-enter the password to save changes. The body is encrypted again on save.";
         setError(errorEl, "");
         showView("editor");
+        setFocusMode(true);
+        autosizeBody();
         bodyInput.focus();
       }
 
@@ -467,8 +567,22 @@
 
       document.getElementById("back").addEventListener("click", () => {
         editingId = null;
+        setFocusMode(false);
         showView("list");
         renderList();
+      });
+
+      focusModeButton.addEventListener("click", () => setFocusMode(true));
+      exitFocusButton.addEventListener("click", () => setFocusMode(false));
+      exitFocusBottom.addEventListener("click", () => setFocusMode(false));
+
+      bodyInput.addEventListener("input", autosizeBody);
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && focusMode) {
+          event.preventDefault();
+          setFocusMode(false);
+        }
       });
 
       document.getElementById("unlock-back").addEventListener("click", () => {
@@ -506,15 +620,19 @@
 
         if (!title) {
           setError(errorEl, "Title is required.");
+          setFocusMode(false);
+          titleInput.focus();
           return;
         }
         if (!password) {
           setError(errorEl, "Password is required to encrypt the note.");
+          setFocusMode(false);
+          passwordInput.focus();
           return;
         }
 
-        const saveButton = document.getElementById("save");
-        saveButton.disabled = true;
+        const saveButtons = editor.querySelectorAll('button[type="submit"]');
+        for (const button of saveButtons) button.disabled = true;
         setError(errorEl, "");
 
         try {
@@ -544,12 +662,13 @@
           saveNotes(notes);
           editingId = null;
           unlockTargetId = null;
+          setFocusMode(false);
           showView("list");
           renderList();
         } catch {
           setError(errorEl, "Could not encrypt and save the note.");
         } finally {
-          saveButton.disabled = false;
+          for (const button of saveButtons) button.disabled = false;
         }
       });
 
